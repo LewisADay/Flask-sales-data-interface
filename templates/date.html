@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+<title>Product Data</title>
+<body>
+    {% if query %}
+    <h1>Date metrics for {{ query.date }}.</h1>
+    <h2>Day {{ query.day }}, of month {{ query.month }}, of the year {{ query.year }}.</h2>
+    {% else %}
+    Oops, no date defined, how did we get here?
+    {% endif %}
+</body>
+</html>

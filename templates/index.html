@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<title>Product Data</title>
+<body>
+    <h1>Product data retrieval</h1>
+    {% if prev %}
+    <p>Try again.</p>
+    <p>{{ prev }} is not a valid date.</p>
+    {% endif %}
+    <h2>Please enter a valid date of the form</h2>
+    <h3>YYYY-MM-DD</h3>
+
+    <form action = "http://localhost:5000/index" method="post"> 
+        <p><input type = "text" name = "date" /></p>
+        <p><input type = "submit" value = "submit" /></p>
+    </form>
+</body>
+</html>
