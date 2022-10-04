@@ -1,6 +1,7 @@
 
 from csv import DictReader
-from typing import Dict
+from itertools import product
+import pandas as pd
 
 def is_valid_date(input):
     """A really bad way to check the validity of thise date format
@@ -60,24 +61,23 @@ class Query:
         self.date = date
         self.year, self.month, self.day = get_date_from_str(date)
 
-        self.items_sold = None
-        self.num_customers = None
-        self.total_discount = None
-        self.avg_discount = None
-        self.avg_total = None
-        self.total_commission = None
-        self.avg_commission = None
-        self.total_commission_per_promotion = None
+        self.items_sold = 0
+        self.num_customers = 0
+        self.total_discount = 0
+        self.avg_discount_rate = 0
+        self.avg_total = 0
+        self.total_commission = 0
+        self.avg_commission = 0
+        self.total_commission_per_promotion = 0
 
         self._query()
 
-
     def _parse_orders_csv(self):
 
-        # Storage for return variables
+        # Storage variables
         order_ids = []
-        unique_customers = set()
-        vendors_orders = {}
+        customer_ids = []
+        vendors = []
 
         # Open orders.csv
         with open('orders.csv', 'r') as file:
@@ -94,92 +94,197 @@ class Query:
 
                 # If this is the date we're after, get its info
                 if date == self.date:
-                    id = order['id']
-                    order_ids.append(id)
-                    unique_customers.add(order['customer_id'])
-                    vendor = order['vendor_id']
-                    if vendor in vendors_orders:
-                        vendors_orders[vendor].append(id)
-                    else:
-                        vendors_orders[vendor] = [id]
+                    order_ids.append(int(order['id']))
+                    customer_ids.append(int(order['customer_id']))
+                    vendors.append(int(order['vendor_id']))
                 
                 # If date greater than the date we're after
                 # finish early, we've passed it
-                # (exploiting the fact orders'csv is date ordered ascending)
+                # (exploiting the fact orders.csv is date ordered ascending)
                 if date_greater_than_date(date, self.date):
                     break
 
-        return order_ids, unique_customers, vendors_orders
+        return pd.DataFrame(
+            list(zip(order_ids, customer_ids, vendors)),
+            columns=['order_id', 'customer_id', 'vendor_id'],
+            )
 
-    def _parse_order_lines_csv(self, order_ids):
-
-        # Storage for return variables
-        total_discount = 0
-        num_items = 0
-        avg_order_total = 0
-        avg_discount_rate = 0
-
-        # Temporary variables
-        order_totals = {}
+    def _parse_order_lines_csv(self, base_order_ids):
 
         # Open order_lines.csv
         with open('order_lines.csv', 'r') as file:
+            rows = [0]
+            row = 1
+            dict_reader = DictReader(file)
+            for entry in dict_reader:
+                if int(entry['order_id']) in base_order_ids:
+                    rows.append(row)
+                row += 1
+
+        # Read order_lines.csv
+        return pd.read_csv(
+            'order_lines.csv',
+            usecols=[
+                'order_id',
+                'product_id',
+                'quantity',
+                'full_price_amount',
+                'discounted_amount',
+                'total_amount'
+                ],
+            skiprows=lambda x: x not in rows,
+            header=0,
+            dtype={
+                'order_id': int,
+                'product_id': int,
+                'quantity': int,
+                'full_price_amount': float,
+                'discounted_amount': float,
+                'total_amount': float
+                }
+            )
+
+    def _parse_commissions_csv(self):
+        # Return dict
+        commissions = {}
+
+        # Open commissions.csv
+        with open('commissions.csv', 'r') as file:
 
             # Read each line as a dict
             dict_reader = DictReader(file)
             for entry in dict_reader:
-                order_id = entry['order_id']
 
-                # Determine if order is from the correct date
-                if order_id not in order_ids:
-                    continue
+                # If this entry is for the date we're after, get its info
+                if entry['date'] == self.date:
+                    commissions[int(entry['vendor_id'])] = float(entry['rate'])
 
-                # If it is...
+                # If date greater than the date we're after
+                # finish early, we've passed it
+                # (exploiting the fact commissions.csv is date ordered ascending)
+                if date_greater_than_date(entry['date'], self.date):
+                    break
 
-                # Calculate discount amount
-                # Get price and discounted price
-                full_price = float(entry['full_price_amount'])
-                disc_price = float(entry['discounted_amount'])
+            return commissions
 
-                # Calculate total discount applied and add to total
-                total_discount += full_price - disc_price
+    def _parse_product_promotions_csv(self):
+        # Return dict
+        promotions = {}
 
-                # Add number of units sold to items count
-                num_items += int(entry['quantity'])
+        # Open product_promotions.csv
+        with open('product_promotions.csv', 'r') as file:
 
-                # Add to this orders total
-                if order_id in order_totals:
-                    order_totals[order_id] += float(entry['discount_rate'])
-                else:
-                    order_totals[order_id] = float(entry['discount_rate'])
+            # Read each line as a dict
+            dict_reader = DictReader(file)
+            for entry in dict_reader:
 
-        return total_discount, num_items, avg_order_total, avg_discount_rate
+                # If this entry is for the date we're after, get its info
+                if entry['date'] == self.date:
+                    promotions[int(entry['product_id'])] = int(entry['promotion_id'])
 
+                # If date greater than the date we're after
+                # finish early, we've passed it
+                # (exploiting the fact commissions.csv is date ordered ascending)
+                if date_greater_than_date(entry['date'], self.date):
+                    break
+
+            return promotions
+
+    def _parse_promotions_csv(self):
+        # Return dict
+        promotions = {}
+
+        # Open promotions.csv
+        with open('promotions.csv', 'r') as file:
+
+            # Read each line as a dict
+            dict_reader = DictReader(file)
+            for entry in dict_reader:
+                promotions[int(entry['id'])] = str(entry['description'])
+
+        return promotions
 
     def _get_data(self):
-        order_ids, unique_customers, vendors_orders = self._parse_orders_csv()
-        self.num_customers = len(unique_customers)
-        self.total_discount, self.items_sold, self.avg_order_total, self.avg_discount_rate = self._parse_order_lines_csv(order_ids)
+        self.order_csv_df = self._parse_orders_csv()
+        self.order_lines_csv_df = self._parse_order_lines_csv(list(self.order_csv_df['order_id'].values))
+        self.commissions_dict = self._parse_commissions_csv()
+        self.product_promotions_dict = self._parse_product_promotions_csv()
+        self.promotions_dict = self._parse_promotions_csv()
+
+    def _calc_vals(self):
+
+        # Get required values
+
+        # Simple calculations
+        self.items_sold = sum(self.order_lines_csv_df['quantity'])
+        self.num_customers = len(set(self.order_csv_df['customer_id']))
+        self.total_discount = sum(self.order_lines_csv_df['full_price_amount'] - self.order_lines_csv_df['discounted_amount'])
+        total = sum(self.order_lines_csv_df['total_amount'])
+        self.avg_discount_rate = self.total_discount / total
+        self.avg_total = total / self.items_sold
+
+        # Commission is a bit more complicated
+
+        # Setup dict for commission per promotion
+        self.total_commission_per_promotion = {}
+
+        # Init to 0 for all promotions
+        for promotion in self.promotions_dict.values():
+            self.total_commission_per_promotion[promotion] = 0
+
+        for vendor, rate in self.commissions_dict.items():
+            vendor_mask = (self.order_csv_df['vendor_id'] == vendor)
+            vendors_orders = self.order_csv_df['order_id'][vendor_mask]
+            for order in vendors_orders:
+                order_mask = (self.order_lines_csv_df['order_id'] == order)
+                # Per product
+                for product_id in self.order_lines_csv_df['product_id'][order_mask]:
+                    product_mask = order_mask & (self.order_lines_csv_df['product_id'] == product_id)
+                    commission = float(self.order_lines_csv_df['total_amount'][product_mask]) * rate
+                    if product_id in self.promotions_dict:
+                        promotion = self.promotions_dict[product_id]
+                    else:
+                        promotion = 0
+                    if promotion in self.total_commission_per_promotion:
+                        self.total_commission_per_promotion[promotion] += commission
+                    else:
+                        self.total_commission_per_promotion[promotion] = commission
+
+        self.total_commission = sum(self.total_commission_per_promotion.values())
+        self.avg_commission = self.total_commission / self.items_sold
 
 
     def _query(self):
-        # Get data for this date in one pandas dataframe
+        # Get data for this date in pandas dataframes
         self._get_data()
+
         # Process data
+        self._calc_vals()
 
-"""Output form
+        # Format data
+        self.items_sold = f"{self.items_sold:d}"
+        self.num_customers = f"{self.num_customers:d}"
+        self.total_discount = f"{self.total_discount:.2f}"
+        self.avg_discount_rate = f"{self.avg_discount_rate:.2f}"
+        self.avg_total = f"{self.avg_total:.2f}"
+        self.total_commission = f"{self.total_commission:.2f}"
+        self.avg_commission = f"{self.avg_commission:.2f}"
 
-Items sold: {}
-Unique customers: {}
-Total amout of discount given: {}
-Average discount rate applied to each item: {}
-Average total per order: {}
-Total commissions generated: {}
-Average commission per order: {}
-Total commissions earned per promotion: {}
+        self.total_commission_per_promotion = {promotion: f"{amount:.2f}" for promotion, amount in self.total_commission_per_promotion.items() if promotion != 0}
 
-"""
+    """Output form
+
+    Items sold: {}
+    Unique customers: {}
+    Total amout of discount given: {}
+    Average discount rate applied to each item: {}
+    Average total per order: {}
+    Total commissions generated: {}
+    Average commission per order: {}
+    Total commissions earned per promotion: {}
+
+    """
 
 if __name__ == "__main__":
-    tmp = "1984-08"
-    print(is_valid_date(tmp))
+    tmp = "2019-08-01"
+    query = Query(tmp)
