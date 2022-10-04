@@ -1,0 +1,6 @@
+
+# Ignore python intermediaries
+__pycache__
+
+# Ignore venv files
+venv
