@@ -1,12 +1,22 @@
 <!doctype html>
 <html>
-<title>Product Data</title>
+<title>Sales Data</title>
 <body>
     {% if query %}
     <h1>Date metrics for {{ query.date }}.</h1>
     <h2>Day {{ query.day }}, of month {{ query.month }}, of the year {{ query.year }}.</h2>
+
+    <p>Items sold: {{ query.items_sold }}</p>
+    <p>Unique customers: {{ query.num_customers }}</p>
+    <p>Total amout of discount given: {{ query.total_discount }}</p>
+    <p>Average discount rate applied to each item: {{ query.avg_discount }}</p>
+    <p>Average total per order: {{ query.avg_total }}</p>
+    <p>Total commissions generated: {{ query.total_commission }}</p>
+    <p>Average commission per order: {{ query.avg_commission }}</p>
+    <p>Total commissions earned per promotion: {{ query.total_commission_per_promotion }}</p>
+
     {% else %}
-    Oops, no date defined, how did we get here?
+    Oops, no query defined, how did we get here?
     {% endif %}
 </body>
 </html>
