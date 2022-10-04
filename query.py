@@ -134,6 +134,7 @@ class Query:
         Dict of total commission earnt per promotion on date, promotion
         names as keys, total commission as values.
     """
+
     def __init__(self, date):
         """Instantiate the Query class, and start the query process
         
@@ -420,7 +421,3 @@ class Query:
         self.avg_commission = f"{self.avg_commission:.2f}"
 
         self.total_commission_per_promotion = {promotion: f"{amount:.2f}" for promotion, amount in self.total_commission_per_promotion.items() if promotion != 0}
-
-if __name__ == "__main__":
-    tmp = "2019-08-01"
-    query = Query(tmp)
