@@ -50,8 +50,8 @@ class TestQuery(unittest.TestCase):
 
     def test_query_items_sold(self):
         date = "2019-08-01"
-        query = Query()
-        self.assertEqual(query.items_sold, 2895)
+        query = Query(date)
+        self.assertEqual(query.items_sold, '2895')
 
     # Etc. for the others, they're time consuming to compute by hand, and prone to error
     # but you could test it that way.
