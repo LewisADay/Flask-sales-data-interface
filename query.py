@@ -4,7 +4,21 @@ from itertools import product
 import pandas as pd
 
 def is_valid_date(input):
-    """A really bad way to check the validity of thise date format"""
+    """A really bad way to check the validity of this date format
+
+    Check input is of the date format YYYY-MM-DD
+    
+    Parameters
+    ----------
+    input : str
+        input string to check if in this date format
+
+    Returns
+    -------
+    bool
+        Indicator of if the supplied string is of the correct format
+    """
+
     try:
         y, m, d = get_date_from_str(input)
     except ValueError:
@@ -19,12 +33,44 @@ def is_valid_date(input):
 
 
 def get_date_from_str(date_str):
-    """Assuming date_str is of the form DD-MM-YYYY, get those ints"""
+    """Assuming date_str is of the form DD-MM-YYYY, get those ints
+    
+    Return the integer values of DD, MM, and, YYYY from the string
+    date_str = "YYYY-MM-DD".
+
+    Parameters
+    ----------
+    date_str : str
+        string containing the date to extract, of the form YYYY-MM-DD
+
+    Returns
+    -------
+    y : int
+        The year value for the given date
+    m : int
+        The month value for the given date
+    d : int
+        The day value for the given date
+    """
     year, month, day = date_str.split('-')
     return int(year), int(month), int(day)
 
 def date_greater_than_date(date1, date2):
-    """Return date1 > date2"""
+    """Return date1 > date2
+    
+    Compare two date strings and return if the first occurs
+    later than the second
+
+    Parameters
+    ----------
+    date1 : str
+    date2 : str
+
+    Returns
+    -------
+    bool
+        True if date1 occurs after date 2, chronologically, False otherwise
+    """
 
     # If equal check
     if date1 == date2:
@@ -53,7 +99,51 @@ def date_greater_than_date(date1, date2):
 
 
 class Query:
+    """Class to perform the query action on the dataset
+
+    Class to perform the relevant actions on the dataset to retrieve
+    the requested data, to be used by the server. Is constructed with
+    a date string, which starts the data retrieval process. Each of the
+    relevant final results may be found as attributes of this class.
+
+    Attributes
+    ----------
+    date : str
+        The original date string
+    year : int
+        The year as extracted from date
+    month : int
+        The month as extracted from date
+    day : int
+        The day as extracted from date
+    items_sold : str
+        Formatted string of total items sold on date
+    num_customers : str
+        Formatted string of total unique customers on date
+    total_discount : str
+        Formatted string of total discount provided on date
+    avg_discount_rate : str
+        Formatted string of average discount rate per item on date
+    avg_total : str
+        Formatted string of average total cost per order on date
+    total_commission : str
+        Formatted string of total commisssion earnt on date
+    avg_commission : str
+        Formatted string of average commission per order on date
+    total_commission_per_promotion : dict
+        Dict of total commission earnt per promotion on date, promotion
+        names as keys, total commission as values.
+    """
     def __init__(self, date):
+        """Instantiate the Query class, and start the query process
+        
+        Parameters
+        ----------
+        date : str
+            Date string to be used for the query, must be sanitised to
+            the YYYY-MM-DD format
+        """
+
         self.date = date
         self.year, self.month, self.day = get_date_from_str(date)
 
@@ -69,6 +159,13 @@ class Query:
         self._query()
 
     def _parse_orders_csv(self):
+        """Parse the orders.csv file into a dataframe
+        
+        Returns
+        -------
+        pandas.DataFrame
+            The DataFrame containing the relevant data from orders.csv
+        """
 
         # Storage variables
         order_ids = []
@@ -106,7 +203,20 @@ class Query:
             )
 
     def _parse_order_lines_csv(self, base_order_ids):
+        """Parse order_lines.csv into a DataFrame
+        
+        Parameters
+        ----------
+        base_order_ids : list
+            List of order_ids for orders occuring on the date in question
 
+        Returns
+        -------
+        pandas.DataFrame
+            DataFrame of relevant data for all orders in the list given
+        """
+
+        # Get rows which occured on the correct date, by order_id
         # Open order_lines.csv
         with open('order_lines.csv', 'r') as file:
             rows = [0]
@@ -141,6 +251,17 @@ class Query:
             )
 
     def _parse_commissions_csv(self):
+        """Parse commissions.csv into a dict
+        
+        Provide a dict to map from a vendor id to their commission
+        rate for the date in question.
+
+        Returns
+        -------
+        commissions : dict
+            Dict of vendor_id-rate key-value pairs
+        """
+
         # Return dict
         commissions = {}
 
@@ -164,6 +285,18 @@ class Query:
             return commissions
 
     def _parse_product_promotions_csv(self):
+        """Parse product_promotions.csv into a dict
+        
+        Provide a dict to map from a product id to the
+        promotion that product is in (if any), for the date in question.
+
+        Returns
+        -------
+        promotions : dict
+            Dict of product_id-promotion_id key-value pairs
+
+        """
+
         # Return dict
         promotions = {}
 
@@ -187,6 +320,16 @@ class Query:
             return promotions
 
     def _parse_promotions_csv(self):
+        """Parse promotions.csv into a dict
+        
+        Provide a dict to map from a promotion_id to it's description.
+        
+        Returns
+        -------
+        promotions : dict
+            Dict of id-description key-value pairs
+        """
+
         # Return dict
         promotions = {}
 
@@ -201,6 +344,8 @@ class Query:
         return promotions
 
     def _get_data(self):
+        """Retrieve the neccessary data from the files"""
+
         self.order_csv_df = self._parse_orders_csv()
         self.order_lines_csv_df = self._parse_order_lines_csv(list(self.order_csv_df['order_id'].values))
         self.commissions_dict = self._parse_commissions_csv()
@@ -208,6 +353,12 @@ class Query:
         self.promotions_dict = self._parse_promotions_csv()
 
     def _calc_vals(self):
+        """Calculate the required values from the retrieved data
+        
+        Must be run after _get_data() to ensure the relevant attributes
+        are correctly assigned. Then we Calculate the required values from
+        the retrieved data.
+        """
 
         # Get required values
 
@@ -251,6 +402,8 @@ class Query:
 
 
     def _query(self):
+        """Start the query for the date in question"""
+
         # Get data for this date in pandas dataframes
         self._get_data()
 
@@ -267,19 +420,6 @@ class Query:
         self.avg_commission = f"{self.avg_commission:.2f}"
 
         self.total_commission_per_promotion = {promotion: f"{amount:.2f}" for promotion, amount in self.total_commission_per_promotion.items() if promotion != 0}
-
-    """Output form
-
-    Items sold: {}
-    Unique customers: {}
-    Total amout of discount given: {}
-    Average discount rate applied to each item: {}
-    Average total per order: {}
-    Total commissions generated: {}
-    Average commission per order: {}
-    Total commissions earned per promotion: {}
-
-    """
 
 if __name__ == "__main__":
     tmp = "2019-08-01"
