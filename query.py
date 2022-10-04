@@ -4,11 +4,7 @@ from itertools import product
 import pandas as pd
 
 def is_valid_date(input):
-    """A really bad way to check the validity of thise date format
-    
-    //
-
-    """
+    """A really bad way to check the validity of thise date format"""
     try:
         y, m, d = get_date_from_str(input)
     except ValueError:
