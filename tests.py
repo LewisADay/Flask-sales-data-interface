@@ -48,7 +48,15 @@ class TestQuery(unittest.TestCase):
         date_str = "03-03-0003"
         self.assertRaises(ValueError, get_date_from_str, date_str)
 
-# Something like that
+    def test_query_items_sold(self):
+        date = "2019-08-01"
+        query = Query()
+        self.assertEqual(query.items_sold, 2895)
+
+    # Etc. for the others, they're time consuming to compute by hand, and prone to error
+    # but you could test it that way.
+
+
 # My first time using unittest and doing proper unittest in general
 # normally just resort to testing in the console and good old print
 # statements all over the place - though I'm aware that's not exactly
