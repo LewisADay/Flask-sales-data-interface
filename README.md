@@ -23,6 +23,7 @@ Then install pandas with pip.
 You may then export and run the server program.
 
 > export FLASK_APP=server
+
 > flask run
 
 This starts the server which may then be visited in your broswer at: http://127.0.0.1:5000.
